@@ -2,42 +2,41 @@ public class Main {
     public static void main(String [] args) {
         Produccion produccion1 = new Produccion();
         
-        System.out.println("--- Registrando Productos ---");
-        // Producto inválido (debería ignorarse)
-        produccion1.registrarProducto("1a", "bombillo", LineaProduccion.ENSAMBLANDO, 1000f, 30f, false, 10f, 150);
-        produccion1.registrarProducto("2a", "silla", LineaProduccion.TERMINANDO, 500f, 20f, false, 5f, 50);
+        System.out.println("--- Inicio de Operaciones ---");
         
-        // Productos válidos
-        // Simulamos 100 motores v8, 15 defectuosos, meta 120
-        for(int i = 0; i < 100; i++) {
-            produccion1.registrarProducto("1b", "motor v8", LineaProduccion.ENSAMBLANDO, 5000f, 120f, i < 15, 150f, 120);
+        // 1. Generar automáticamente un registro de prueba
+        produccion1.generarRegistroPrueba();
+        
+        // Registrar otros productos para tener variedad en el reporte
+        for(int i = 0; i < 80; i++) {
+            produccion1.registrarProducto("2b", "freno de disco", LineaProduccion.EN_PROCESO, 800f, 60f, i < 2, 50f, 50); // Superará la meta
+        }
+        for(int i = 0; i < 30; i++) {
+            produccion1.registrarProducto("3c", "puerta", LineaProduccion.TERMINANDO, 1500f, 90f, i < 5, 80f, 100); // Bajo cumplimiento
         }
         
-        // Simulamos 50 frenos de disco, 2 defectuosos, meta 50
-        for(int i = 0; i < 50; i++) {
-            produccion1.registrarProducto("2b", "freno de disco", LineaProduccion.EN_PROCESO, 800f, 60f, i < 2, 50f, 50);
+        // 2. Modificar cantidades producidas cuando se reporten unidades adicionales
+        produccion1.reportarUnidadesAdicionales("3c", "puerta", LineaProduccion.TERMINANDO, 1500f, 90f, 80f, 100, 10, 2);
+        
+        // 3. Aplicar ajustes porcentuales sobre determinados registros
+        // Incrementamos el costo del "motor v8" un 10%
+        produccion1.aplicarAjustePorcentualCosto("motor v8", 10.0);
+        
+        System.out.println("\n--- Consultas de Desempeño ---");
+        java.util.Map.Entry<String, Double> mayor = produccion1.productoMayorDesempeno.get();
+        if (mayor != null) {
+            System.out.println("Producto de mayor desempeño: " + mayor.getKey() + " (" + String.format("%.2f", mayor.getValue()) + "%)");
         }
         
-        System.out.println("\n--- Resultados de Análisis ---");
-        System.out.println("Cantidad total producida: " + produccion1.cantidadProducida.get());
-        System.out.println("Cantidad total defectuosa: " + produccion1.cantidadDefectuosa.get());
+        java.util.Map.Entry<String, Double> menor = produccion1.productoMenorDesempeno.get();
+        if (menor != null) {
+            System.out.println("Producto de menor desempeño: " + menor.getKey() + " (" + String.format("%.2f", menor.getValue()) + "%)");
+        }
         
-        System.out.println("\n1. Productos con altos niveles de defectos (>10%):");
-        produccion1.productosConAltosDefectos.get().forEach((nombre, porcentaje) -> 
-            System.out.println(" - " + nombre + " (" + String.format("%.2f", porcentaje) + "% defectuoso)")
-        );
+        System.out.println("\nLíneas con bajo cumplimiento (< 80%):");
+        produccion1.lineasConBajoCumplimiento.get().forEach((linea, porcentaje) -> System.out.println(" - " + linea + " (" + String.format("%.2f", porcentaje) + "%)"));
         
-        System.out.println("\n2. Cumplimiento de metas:");
-        produccion1.cumplimientoDeMetas.get().forEach((nombre, porcentaje) -> 
-            System.out.println(" - " + nombre + ": " + String.format("%.2f", porcentaje) + "%")
-        );
-        
-        System.out.println("\n3. Costo total de fabricación: $" + String.format("%.2f", produccion1.costoTotalFabricacion.get()));
-        System.out.println("4. Pérdidas económicas (por defectos): $" + String.format("%.2f", produccion1.perdidasEconomicas.get()));
-        
-        System.out.println("\n5. Desempeño por línea de producción (Total Producido):");
-        produccion1.produccionPorLinea.get().forEach((linea, cantidad) -> 
-            System.out.println(" - " + linea + ": " + cantidad + " unidades")
-        );
+        // 4. Ejecutar un proceso de cierre del turno
+        produccion1.cierreDeTurno();
     }
 }
