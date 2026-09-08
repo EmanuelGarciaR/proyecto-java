@@ -1,0 +1,26 @@
+# Compilados
+*.class
+
+# Maven
+target/
+
+# Gradle
+build/
+.gradle/
+
+# Empaquetados
+*.jar
+*.war
+*.ear
+
+# Archivos de IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
