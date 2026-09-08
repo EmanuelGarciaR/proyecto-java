@@ -13,5 +13,22 @@ import java.util.function.*;
         this.productos.add(productoNuevo);
     }
 
+    // #Cantidad producida
     Supplier<Long> cantidadProducida = () -> productos.stream().count();
+
+
+    //Cantidad defectuosa
+    Supplier<Long> cantidadDefectuosa = () -> productos.stream()
+    .filter(producto -> producto.getEsDefectuoso())
+    .count();
+
+    //Minutos utilzados
+    Supplier<Float> minutosUtilizados = () -> productos.stream()
+    .map(Producto::getMinutosUtilizados)
+    .reduce(0f, (acumulador, minutoActual)-> acumulador + minutoActual);
+
+    //Kilogramos de materia prima consumida
+    Supplier<Float> kilogramosMateriaPrimaConsumida = () -> productos.stream()
+    .map(Producto::getPesoMateriaPrima)
+    .reduce(0f, (acumulador, pesoActual) -> acumulador + pesoaActual);
 }

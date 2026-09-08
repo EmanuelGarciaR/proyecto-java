@@ -38,7 +38,7 @@ public class Producto {
     public Boolean getEsDefectuoso(){
         return esDefectuoso;
     }
-    public Float get_peso_materia_prima(){
+    public Float getPesoMateriaPrima(){
         return peso_materia_prima;
     }
 
