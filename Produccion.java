@@ -56,6 +56,7 @@ public class Produccion {
             .mapToDouble(Producto::getPesoMateriaPrima)
             .sum();
 
+
     // 1. Identificar productos con niveles altos de defectos
     BiPredicate<Long, Long> altoNivelDefectos = (defectuosos, total) -> total > 0 && ((double) defectuosos / total) > 0.10;
 
@@ -78,7 +79,7 @@ public class Produccion {
 
     // 2. Calcular el cumplimiento de metas por producto (%)
     Supplier<Map<String, Double>> cumplimientoDeMetas = () -> productos.stream()
-            .collect(Collectors.groupingBy(Producto::getNombre))
+            .collect(Collectors.groupingBy(Producto::getNombre)) // retorna un map
             .entrySet().stream()
             .collect(Collectors.toMap(
                 Map.Entry::getKey,
@@ -108,12 +109,12 @@ public class Produccion {
             ));
 
 
-    // Obtener producto de mayor desempeño
+    // Obtener producto de mayor desempeño a partir del porcentaje de cumplimiento de metas
     Supplier<Map.Entry<String, Double>> productoMayorDesempeno = () -> cumplimientoDeMetas.get().entrySet().stream()
             .max(Map.Entry.comparingByValue())
             .orElse(null);
 
-    // Obtener producto de menor desempeño
+    // Obtener producto de menor desempeño a partir del porcentaje de cumplimiento de metas
     Supplier<Map.Entry<String, Double>> productoMenorDesempeno = () -> cumplimientoDeMetas.get().entrySet().stream()
             .min(Map.Entry.comparingByValue())
             .orElse(null);
@@ -185,7 +186,7 @@ public class Produccion {
         }
     }
 
-    // Aplicar ajustes porcentuales sobre determinados registros (ej. incrementar costo)
+    // Aplicar ajustes porcentuales sobre determinados registros (incrementar costo)
     public void aplicarAjustePorcentualCosto(String nombreProducto, double porcentaje) {
         System.out.println("-> Aplicando ajuste del " + porcentaje + "% al costo de " + nombreProducto);
         UnaryOperator<Float> nuevoCosto = costo -> (float) (costo * (1 + (porcentaje / 100)));
