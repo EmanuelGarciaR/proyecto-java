@@ -20,6 +20,13 @@ public class Produccion {
         this.productos = new ArrayList<>();
     }
         
+    private boolean esProductoValido(String nombre) {
+        if (nombre == null) return false;
+        String nombreLower = nombre.trim().toLowerCase();
+        return PRODUCTOS_VALIDOS.stream().anyMatch(valido -> nombreLower.contains(valido));
+    }
+
+    
     public void registrarProducto(String codigo, String nombre, LineaProduccion linea_produccion, Float costo_unitario, Float minutos_utilizados, Boolean esDefectuosoFlag, Float peso_materia_prima, Integer meta_produccion) {
         if (!esProductoValido(nombre)) {
             System.out.println("Error: El producto '" + nombre + "' no es válido en el contexto de piezas automotrices y será ignorado.");
@@ -30,11 +37,6 @@ public class Produccion {
         this.productos.add(productoNuevo);
     }
     
-    private boolean esProductoValido(String nombre) {
-        if (nombre == null) return false;
-        String nombreLower = nombre.trim().toLowerCase();
-        return PRODUCTOS_VALIDOS.stream().anyMatch(valido -> nombreLower.contains(valido));
-    }
 
     // Cantidad producida: cuenta el tamaño de la lista
     Supplier<Long> cantidadProducida = () -> productos.stream().count();
@@ -55,13 +57,15 @@ public class Produccion {
             .sum();
 
     // 1. Identificar productos con niveles altos de defectos
+    BiPredicate<Long, Long> altoNivelDefectos = (defectuosos, total) -> total > 0 && ((double) defectuosos / total) > 0.10;
+
     Supplier<Map<String, Double>> productosConAltosDefectos = () -> productos.stream()
             .collect(Collectors.groupingBy(Producto::getNombre))
             .entrySet().stream()
             .filter(entry -> {
                 long total = entry.getValue().size();
                 long defectuosos = entry.getValue().stream().filter(esDefectuoso).count();
-                return total > 0 && ((double) defectuosos / total) > 0.10;
+                return altoNivelDefectos.test(defectuosos, total);
             })
             .collect(Collectors.toMap(
                 Map.Entry::getKey,
@@ -144,11 +148,13 @@ public class Produccion {
             .collect(Collectors.toList());
 
     // Producto con mayor pérdida económica
+    BinaryOperator<Map.Entry<String, Double>> mayorPerdidaOperator = BinaryOperator.maxBy(Map.Entry.comparingByValue());
+
     Supplier<String> productoMayorPerdida = () -> productos.stream()
             .filter(esDefectuoso)
             .collect(Collectors.groupingBy(Producto::getNombre, Collectors.summingDouble(Producto::getCostoUnitario)))
             .entrySet().stream()
-            .max(Map.Entry.comparingByValue())
+            .reduce(mayorPerdidaOperator)
             .map(Map.Entry::getKey)
             .orElse("Ninguno");
 
@@ -182,38 +188,43 @@ public class Produccion {
     // Aplicar ajustes porcentuales sobre determinados registros (ej. incrementar costo)
     public void aplicarAjustePorcentualCosto(String nombreProducto, double porcentaje) {
         System.out.println("-> Aplicando ajuste del " + porcentaje + "% al costo de " + nombreProducto);
+        UnaryOperator<Float> nuevoCosto = costo -> (float) (costo * (1 + (porcentaje / 100)));
         productos.stream()
             .filter(p -> p.getNombre().equals(nombreProducto))
-            .forEach(p -> p.setCostoUnitario((float) (p.getCostoUnitario() * (1 + (porcentaje / 100)))));
+            .forEach(p -> p.setCostoUnitario(nuevoCosto.apply(p.getCostoUnitario())));
     }
 
     // Ejecutar un proceso de cierre del turno
     public void cierreDeTurno() {
-        System.out.println("\n========== REPORTE DE CIERRE DE TURNO ==========");
-        
-        System.out.println("\nLíneas existentes:");
-        produccionPorLinea.get().keySet().forEach(linea -> System.out.println(" - " + linea));
-        
-        System.out.println("\nProducción total por línea:");
-        produccionPorLinea.get().forEach((linea, cantidad) -> System.out.println(" - " + linea + ": " + cantidad + " unid."));
-        
-        System.out.println("\nProductos críticos (altos defectos):");
-        productosConAltosDefectos.get().forEach((nombre, porc) -> System.out.println(" - " + nombre + " (" + String.format("%.2f", porc) + "%)"));
-        
-        System.out.println("\nProductos que superaron la meta:");
-        productosSuperaronMeta.get().forEach(nombre -> System.out.println(" - " + nombre));
-        
-        System.out.println("\nUnidades defectuosas totales: " + cantidadDefectuosa.get());
-        
-        System.out.println("Costo total de producción: $" + String.format("%.2f", costoTotalFabricacion.get()));
-        
-        System.out.println("Pérdidas económicas: $" + String.format("%.2f", perdidasEconomicas.get()));
-        
-        System.out.println("Producto con mayor pérdida: " + productoMayorPerdida.get());
-        
-        System.out.println("Línea con mayor cantidad producida: " + lineaMayorCantidad.get());
-        
-        System.out.println("================================================");
+        Consumer<String> printer = System.out::println;
+        Runnable reporte = () -> {
+            printer.accept("\n========== REPORTE DE CIERRE DE TURNO ==========");
+            
+            printer.accept("\nLíneas existentes:");
+            produccionPorLinea.get().keySet().forEach(linea -> printer.accept(" - " + linea));
+            
+            printer.accept("\nProducción total por línea:");
+            produccionPorLinea.get().forEach((linea, cantidad) -> printer.accept(" - " + linea + ": " + cantidad + " unid."));
+            
+            printer.accept("\nProductos críticos (altos defectos):");
+            productosConAltosDefectos.get().forEach((nombre, porc) -> printer.accept(" - " + nombre + " (" + String.format("%.2f", porc) + "%)"));
+            
+            printer.accept("\nProductos que superaron la meta:");
+            productosSuperaronMeta.get().forEach(nombre -> printer.accept(" - " + nombre));
+            
+            printer.accept("\nUnidades defectuosas totales: " + cantidadDefectuosa.get());
+            
+            printer.accept("Costo total de producción: $" + String.format("%.2f", costoTotalFabricacion.get()));
+            
+            printer.accept("Pérdidas económicas: $" + String.format("%.2f", perdidasEconomicas.get()));
+            
+            printer.accept("Producto con mayor pérdida: " + productoMayorPerdida.get());
+            
+            printer.accept("Línea con mayor cantidad producida: " + lineaMayorCantidad.get());
+            
+            printer.accept("================================================");
+        };
+        reporte.run();
     }
             
     public ArrayList<Producto> getProductos() {
